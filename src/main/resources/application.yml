@@ -1,0 +1,96 @@
+spring:
+  application:
+    name: ea-roadrunner
+  boot:
+    admin:
+      client:
+        enabled: false
+  data:
+    mongodb:
+      uri: ${MONGO_URI:mongodb://admin:password@localhost:27017/ea_roadrunner?authSource=admin}
+      database: ${MONGO_DB:ea_roadrunner}
+      auto-index-creation: true
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:}
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+app:
+  environment: ${APP_ENVIRONMENT:development}
+  elasticsearch:
+    host: ${ES_ARCHIVE_HOST:localhost}
+    port: ${ES_ARCHIVE_PORT:9200}
+    scheme: ${ES_ARCHIVE_SCHEME:http}
+    username: ${ES_ARCHIVE_HOST_USER:}
+    password: ${ES_ARCHIVE_HOST_PASSWD:}
+  scheduler:
+    enabled: ${SCHEDULER_ENABLED:true}
+    pool-size: ${SCHEDULER_POOL_SIZE:4}
+    # ShedLock distributed-lock windows (multi-replica k8s). lock-at-most-for must
+    # exceed the longest expected job runtime; it auto-releases if a pod dies.
+    lock-at-most-for: ${SCHEDULER_LOCK_AT_MOST_FOR:PT30M}
+    lock-at-least-for: ${SCHEDULER_LOCK_AT_LEAST_FOR:PT0S}
+    # Define one entry per scheduled engine run. Each job runs its engine for
+    # every listed tenant on the given cron. Example (disabled by default - no
+    # jobs are registered until you add them here):
+    jobs: []
+    #  - name: hourly-generic
+    #    cron: "0 0 * * * *"
+    #    engine-type: generic
+    #    environment: production
+    #    tenants: [jpmc, natwest]
+    #    parameters:
+    #      recordCount: 5000
+    #  - name: daily-state-corrector
+    #    cron: "0 0 9 * * *"
+    #    engine-type: state-corrector
+    #    tenants: [jpmc]
+    #    parameters:
+    #      recordCount: 10000
+    #      dryRun: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+  datadog:
+    metrics:
+      export:
+        enabled: ${DATADOG_METRICS_ENABLED:false}
+        api-key: ${DATADOG_API_KEY:}
+
+logging:
+  level:
+    com.smarsh.roadrunner: DEBUG
+    org.springframework: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+---
+# Local development profile: relaxes OAuth2 so the app boots without an IdP.
+# Activate with: -Dspring.profiles.active=dev  (or SPRING_PROFILES_ACTIVE=dev)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.security.oauth2.resource.servlet.OAuth2ResourceServerAutoConfiguration
+
+app:
+  environment: development
+  security:
+    enabled: false
